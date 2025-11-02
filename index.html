@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Plot Generator</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --color-background: #fcfcf9;
+            --color-surface: #fffffe;
+            --color-text: #13343b;
+            --color-text-secondary: #626c71;
+            --color-primary: #21808d;
+            --color-primary-hover: #1d7480;
+            --color-border: rgba(94, 82, 64, 0.2);
+            --color-error: #c0152f;
+            --color-success: #21808d;
+            --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-background: #1f2121;
+                --color-surface: #262828;
+                --color-text: #f5f5f5;
+                --color-text-secondary: rgba(167, 169, 169, 0.7);
+                --color-primary: #32b8c6;
+                --color-primary-hover: #2da6b2;
+                --color-border: rgba(119, 124, 124, 0.3);
+            }
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: var(--font-family-base);
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            margin: 0 0 24px 0;
+            color: var(--color-text-secondary);
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .tab {
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--color-text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"], input[type="number"], textarea, select {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 14px;
+            color: var(--color-text);
+            background-color: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            font-family: var(--font-family-base);
+        }
+
+        input[type="color"] {
+            height: 40px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        textarea {
+            min-height: 120px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: 2px solid var(--color-primary);
+            border-color: var(--color-primary);
+        }
+
+        .file-upload {
+            border: 2px dashed var(--color-border);
+            border-radius: 8px;
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-upload:hover {
+            border-color: var(--color-primary);
+            background: rgba(33, 128, 141, 0.05);
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font-family-base);
+        }
+
+        .btn-primary {
+            background: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .btn-secondary {
+            background: rgba(33, 128, 141, 0.12);
+            color: var(--color-primary);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(33, 128, 141, 0.2);
+        }
+
+        .btn-danger {
+            background: rgba(192, 21, 47, 0.15);
+            color: var(--color-error);
+            border: 1px solid var(--color-error);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .data-table th, .data-table td {
+            padding: 8px;
+            border: 1px solid var(--color-border);
+            text-align: left;
+        }
+
+        .data-table th {
+            background: rgba(33, 128, 141, 0.1);
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .plot-card {
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            background: var(--color-surface);
+        }
+
+        .plot-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .plot-preview {
+            min-height: 350px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-surface);
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status.loading {
+            display: block;
+            background: rgba(33, 128, 141, 0.1);
+            color: var(--color-primary);
+            border: 1px solid var(--color-primary);
+        }
+
+        .status.success {
+            display: block;
+            background: rgba(33, 128, 141, 0.15);
+            color: var(--color-success);
+            border: 1px solid var(--color-success);
+        }
+
+        .status.error {
+            display: block;
+            background: rgba(192, 21, 47, 0.15);
+            color: var(--color-error);
+            border: 1px solid var(--color-error);
+        }
+
+        .helper-text {
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            margin-top: 4px;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Plot Generator</h1>
+        <p class="subtitle">Create beautiful charts from your data with advanced features</p>
+
+        <!-- Data Input Section -->
+        <div class="section">
+            <h2 class="section-title">Step 1: Input Data</h2>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('upload')">Upload CSV</button>
+                <button class="tab" onclick="switchTab('manual')">Manual Entry</button>
+                <button class="tab" onclick="switchTab('csv')">Paste CSV</button>
+            </div>
+
+            <!-- CSV Upload Tab -->
+            <div id="upload-tab" class="tab-content active">
+                <div class="file-upload" onclick="document.getElementById('fileInput').click()">
+                    <input type="file" id="fileInput" accept=".csv" onchange="handleFileUpload(event)">
+                    <p>📁 <strong>Click to upload</strong> or drag and drop</p>
+                    <p class="helper-text">CSV files up to 10,000 rows supported</p>
+                </div>
+            </div>
+
+            <!-- Manual Entry Tab -->
+            <div id="manual-tab" class="tab-content">
+                <div class="form-group">
+                    <label>Column Names (comma-separated)</label>
+                    <input type="text" id="columnNames" placeholder="e.g., Month, Sales, Profit" value="Month, Sales">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Rows (one per line, comma-separated)</label>
+                    <textarea id="manualData" placeholder="Jan, 100&#10;Feb, 150&#10;Mar, 200">Jan, 100
+Feb, 150
+Mar, 200
+Apr, 180
+May, 220</textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="parseManualData()">Parse Manual Data</button>
+            </div>
+
+            <!-- CSV Paste Tab -->
+            <div id="csv-tab" class="tab-content">
+                <div class="form-group">
+                    <label>Paste CSV Data (with headers)</label>
+                    <textarea id="csvData" placeholder="Month,Sales,Profit&#10;Jan,100,50&#10;Feb,150,75">Month,Sales,Profit
+Jan,100,50
+Feb,150,75
+Mar,200,100
+Apr,180,90</textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="parseCSVData()">Parse CSV Data</button>
+            </div>
+        </div>
+
+        <!-- Data Preview & Filtering Section -->
+        <div class="section" id="previewSection" style="display:none;">
+            <h2 class="section-title">Data Preview & Filtering</h2>
+            
+            <div id="filterContainer" style="margin-bottom: 16px;">
+                <h3 style="font-size: 14px; margin: 0 0 12px 0;">Add Filters</h3>
+                <div id="filters"></div>
+                <button class="btn btn-secondary" onclick="addFilter()" style="margin-top: 8px;">+ Add Filter</button>
+                <button class="btn btn-secondary" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="clearFilters()">Clear All Filters</button>
+            </div>
+
+            <div id="dataPreview"></div>
+            <p class="helper-text" id="rowCount"></p>
+        </div>
+
+        <!-- Plot Configuration Section -->
+        <div class="section" id="configSection" style="display:none;">
+            <h2 class="section-title">Step 2: Configure Plot</h2>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Plot Type</label>
+                    <select id="plotType" onchange="updatePlotTypeOptions()">
+                        <option value="line">Line Chart</option>
+                        <option value="bar">Bar Chart</option>
+                        <option value="scatter">Scatter Plot</option>
+                        <option value="pie">Pie Chart</option>
+                        <option value="area">Area Chart</option>
+                        <option value="histogram">Histogram</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Animation</label>
+                    <select id="animated">
+                        <option value="false">Static</option>
+                        <option value="true">Animated (play button)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>X-Axis Column</label>
+                    <select id="xColumn"></select>
+                </div>
+
+                <div class="form-group" id="yColumnGroup">
+                    <label>Y-Axis Column</label>
+                    <select id="yColumn"></select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Plot Title</label>
+                <input type="text" id="plotTitle" placeholder="My Chart" value="Sales Chart">
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group" id="xLabelGroup">
+                    <label>X-Axis Label</label>
+                    <input type="text" id="xLabel" placeholder="X-Axis" value="Month">
+                </div>
+
+                <div class="form-group" id="yLabelGroup">
+                    <label>Y-Axis Label</label>
+                    <input type="text" id="yLabel" placeholder="Y-Axis" value="Sales">
+                </div>
+            </div>
+
+            <h3 style="font-size: 15px; margin: 20px 0 12px 0;">Advanced Customization</h3>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Line/Bar Color</label>
+                    <input type="color" id="plotColor" value="#21808d">
+                </div>
+
+                <div class="form-group">
+                    <label>Show Legend</label>
+                    <select id="showLegend">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Y-Axis Min (optional)</label>
+                    <input type="number" id="yMin" placeholder="Auto">
+                </div>
+
+                <div class="form-group">
+                    <label>Y-Axis Max (optional)</label>
+                    <input type="number" id="yMax" placeholder="Auto">
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="generatePlot()">Generate Plot</button>
+            <button class="btn btn-secondary" onclick="addPlotToDashboard()">+ Add to Dashboard</button>
+        </div>
+
+        <!-- Plot Preview Section -->
+        <div class="section" id="plotSection" style="display:none;">
+            <h2 class="section-title">Step 3: Plot Preview</h2>
+            <div id="plotPreview" class="plot-preview"></div>
+
+            <div class="button-group" style="margin-top: 16px;">
+                <button class="btn btn-secondary" onclick="downloadHTML()">📄 HTML</button>
+                <button class="btn btn-secondary" onclick="downloadPNG()">🖼️ PNG</button>
+                <button class="btn btn-secondary" onclick="downloadSVG()">📐 SVG</button>
+                <button class="btn btn-secondary" onclick="downloadGIF()">🎬 GIF</button>
+                <button class="btn btn-secondary" onclick="copyEmbedCode()">📋 Copy Code</button>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div class="section" id="dashboardSection" style="display:none;">
+            <h2 class="section-title">Dashboard (Multiple Plots)</h2>
+            <div id="dashboardPlots"></div>
+            <button class="btn btn-primary" onclick="downloadAllAsZip()">📦 Download All as ZIP</button>
+        </div>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        let parsedData = { columns: [], rows: [], filteredRows: [] };
+        let currentPlotly = null;
+        let dashboardPlots = [];
+        let filterCount = 0;
+        let activeFilters = [];
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.name.endsWith('.csv')) {
+                showStatus('error', '❌ Please upload a CSV file');
+                return;
+            }
+
+            const text = await file.text();
+            parseCsvText(text);
+        }
+
+        function parseManualData() {
+            const colNames = document.getElementById('columnNames').value.trim();
+            const dataText = document.getElementById('manualData').value.trim();
+
+            if (!colNames || !dataText) {
+                showStatus('error', '❌ Please enter both column names and data rows');
+                return;
+            }
+
+            const columns = colNames.split(',').map(c => c.trim());
+            const rows = dataText.split('\n').map(line => 
+                line.split(',').map(v => v.trim())
+            );
+
+            parsedData = { columns, rows, filteredRows: rows };
+            displayDataPreview();
+            setupPlotConfig();
+            showStatus('success', '✅ Manual data parsed successfully');
+        }
+
+        function parseCSVData() {
+            const csvText = document.getElementById('csvData').value.trim();
+            if (!csvText) {
+                showStatus('error', '❌ Please paste CSV data');
+                return;
+            }
+            parseCsvText(csvText);
+        }
+
+        function parseCsvText(text) {
+            const lines = text.split('\n').filter(l => l.trim());
+            const columns = lines[0].split(',').map(c => c.trim());
+            const rows = lines.slice(1).map(line => 
+                line.split(',').map(v => v.trim())
+            );
+
+            parsedData = { columns, rows, filteredRows: rows };
+            displayDataPreview();
+            setupPlotConfig();
+            showStatus('success', `✅ Loaded ${rows.length} rows successfully`);
+        }
+
+        function displayDataPreview() {
+            const preview = document.getElementById('dataPreview');
+            const data = parsedData.filteredRows.length > 0 ? parsedData.filteredRows : parsedData.rows;
+            
+            let html = '<div style="max-height: 300px; overflow-y: auto;"><table class="data-table"><thead><tr>';
+            
+            parsedData.columns.forEach(col => {
+                html += `<th>${col}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            data.slice(0, 100).forEach(row => {
+                html += '<tr>';
+                row.forEach(val => {
+                    html += `<td>${val}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+            preview.innerHTML = html;
+            
+            document.getElementById('rowCount').textContent = 
+                `Showing ${Math.min(100, data.length)} of ${data.length} rows`;
+            
+            document.getElementById('previewSection').style.display = 'block';
+        }
+
+        function setupPlotConfig() {
+            const xSelect = document.getElementById('xColumn');
+            const ySelect = document.getElementById('yColumn');
+
+            xSelect.innerHTML = '';
+            ySelect.innerHTML = '';
+
+            parsedData.columns.forEach((col, idx) => {
+                xSelect.innerHTML += `<option value="${idx}">${col}</option>`;
+                ySelect.innerHTML += `<option value="${idx}">${col}</option>`;
+            });
+
+            if (parsedData.columns.length > 1) {
+                ySelect.selectedIndex = 1;
+            }
+
+            document.getElementById('configSection').style.display = 'block';
+        }
+
+        function addFilter() {
+            filterCount++;
+            const filterHtml = `
+                <div class="filter-row" id="filter-${filterCount}">
+                    <select id="filterCol-${filterCount}">
+                        ${parsedData.columns.map((col, idx) => `<option value="${idx}">${col}</option>`).join('')}
+                    </select>
+                    <select id="filterOp-${filterCount}">
+                        <option value="equals">Equals</option>
+                        <option value="contains">Contains</option>
+                        <option value="greater">Greater than</option>
+                        <option value="less">Less than</option>
+                    </select>
+                    <input type="text" id="filterVal-${filterCount}" placeholder="Value">
+                    <button class="btn btn-danger" onclick="removeFilter(${filterCount})">Remove</button>
+                </div>
+            `;
+            document.getElementById('filters').insertAdjacentHTML('beforeend', filterHtml);
+        }
+
+        function removeFilter(id) {
+            document.getElementById(`filter-${id}`).remove();
+        }
+
+        function applyFilters() {
+            activeFilters = [];
+            
+            document.querySelectorAll('[id^="filter-"]').forEach(filter => {
+                const id = filter.id.split('-')[1];
+                const col = parseInt(document.getElementById(`filterCol-${id}`).value);
+                const op = document.getElementById(`filterOp-${id}`).value;
+                const val = document.getElementById(`filterVal-${id}`).value;
+                
+                if (val) activeFilters.push({ col, op, val });
+            });
+
+            if (activeFilters.length === 0) {
+                parsedData.filteredRows = parsedData.rows;
+            } else {
+                parsedData.filteredRows = parsedData.rows.filter(row => {
+                    return activeFilters.every(f => {
+                        const cellVal = row[f.col];
+                        if (f.op === 'equals') return cellVal === f.val;
+                        if (f.op === 'contains') return cellVal.includes(f.val);
+                        if (f.op === 'greater') return parseFloat(cellVal) > parseFloat(f.val);
+                        if (f.op === 'less') return parseFloat(cellVal) < parseFloat(f.val);
+                        return true;
+                    });
+                });
+            }
+
+            displayDataPreview();
+            showStatus('success', `✅ Filtered to ${parsedData.filteredRows.length} rows`);
+        }
+
+        function clearFilters() {
+            document.getElementById('filters').innerHTML = '';
+            activeFilters = [];
+            parsedData.filteredRows = parsedData.rows;
+            displayDataPreview();
+            showStatus('success', '✅ Filters cleared');
+        }
+
+        function updatePlotTypeOptions() {
+            const plotType = document.getElementById('plotType').value;
+            const isPie = plotType === 'pie';
+            const isHist = plotType === 'histogram';
+            
+            document.getElementById('yColumnGroup').style.display = (isPie || isHist) ? 'none' : 'block';
+            document.getElementById('xLabelGroup').style.display = isPie ? 'none' : 'block';
+            document.getElementById('yLabelGroup').style.display = isPie ? 'none' : 'block';
+        }
+
+        async function generatePlot() {
+            const data = parsedData.filteredRows.length > 0 ? parsedData.filteredRows : parsedData.rows;
+            
+            const config = {
+                plotType: document.getElementById('plotType').value,
+                xCol: parseInt(document.getElementById('xColumn').value),
+                yCol: parseInt(document.getElementById('yColumn').value),
+                title: document.getElementById('plotTitle').value,
+                xLabel: document.getElementById('xLabel').value,
+                yLabel: document.getElementById('yLabel').value,
+                color: document.getElementById('plotColor').value,
+                showLegend: document.getElementById('showLegend').value === 'true',
+                yMin: document.getElementById('yMin').value,
+                yMax: document.getElementById('yMax').value,
+                animated: document.getElementById('animated').value === 'true'
+            };
+
+            showStatus('loading', '⏳ Generating plot...');
+
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        data: { columns: parsedData.columns, rows: data },
+                        config: config
+                    })
+                });
+
+                const plotData = await response.json();
+
+                if (!response.ok || !plotData) {
+                    throw new Error(plotData.error || 'Failed to generate plot');
+                }
+
+                currentPlotly = plotData;
+                Plotly.newPlot('plotPreview', currentPlotly.data, currentPlotly.layout, {responsive: true});
+                
+                document.getElementById('plotSection').style.display = 'block';
+                showStatus('success', '✅ Plot generated!');
+
+            } catch (error) {
+                showStatus('error', `❌ Error: ${error.message}`);
+            }
+        }
+
+        function addPlotToDashboard() {
+            if (!currentPlotly) {
+                showStatus('error', '❌ Generate a plot first');
+                return;
+            }
+
+            dashboardPlots.push(currentPlotly);
+            updateDashboard();
+            showStatus('success', `✅ Added to dashboard (${dashboardPlots.length} plots)`);
+        }
+
+        function updateDashboard() {
+            const container = document.getElementById('dashboardPlots');
+            container.innerHTML = '';
+
+            dashboardPlots.forEach((plot, idx) => {
+                const plotDiv = document.createElement('div');
+                plotDiv.className = 'plot-card';
+                plotDiv.innerHTML = `
+                    <div class="plot-card-header">
+                        <strong>Plot ${idx + 1}: ${plot.layout.title.text}</strong>
+                        <button class="btn btn-danger" onclick="removePlotFromDashboard(${idx})">Remove</button>
+                    </div>
+                    <div id="dashPlot-${idx}" class="plot-preview"></div>
+                `;
+                container.appendChild(plotDiv);
+                
+                setTimeout(() => {
+                    Plotly.newPlot(`dashPlot-${idx}`, plot.data, plot.layout, {responsive: true});
+                }, 100);
+            });
+
+            document.getElementById('dashboardSection').style.display = dashboardPlots.length > 0 ? 'block' : 'none';
+        }
+
+        function removePlotFromDashboard(idx) {
+            dashboardPlots.splice(idx, 1);
+            updateDashboard();
+            showStatus('success', '✅ Plot removed from dashboard');
+        }
+
+        function downloadHTML() {
+            if (!currentPlotly) {
+                showStatus('error', '❌ Generate a plot first');
+                return;
+            }
+
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${currentPlotly.layout.title.text || 'Plot'}</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
+</head>
+<body style="margin:0;padding:20px;">
+    <div id="plot"></div>
+    <script>
+        Plotly.newPlot('plot', ${JSON.stringify(currentPlotly.data)}, ${JSON.stringify(currentPlotly.layout)}, {responsive: true});
+    <\/script>
+</body>
+</html>`;
+
+            downloadFile(html, 'plot.html', 'text/html');
+            showStatus('success', '✅ HTML downloaded!');
+        }
+
+        async function downloadPNG() {
+            if (!currentPlotly) {
+                showStatus('error', '❌ Generate a plot first');
+                return;
+            }
+
+            showStatus('loading', '⏳ Generating PNG...');
+
+            try {
+                const response = await fetch('/api/export_png', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentPlotly)
+                });
+
+                if (!response.ok) throw new Error('PNG export failed');
+
+                const blob = await response.blob();
+                downloadBlob(blob, 'plot.png');
+                showStatus('success', '✅ PNG downloaded!');
+            } catch (error) {
+                showStatus('error', `❌ PNG export error: ${error.message}`);
+            }
+        }
+
+        async function downloadSVG() {
+            if (!currentPlotly) {
+                showStatus('error', '❌ Generate a plot first');
+                return;
+            }
+
+            showStatus('loading', '⏳ Generating SVG...');
+
+            try {
+                const response = await fetch('/api/export_svg', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentPlotly)
+                });
+
+                if (!response.ok) throw new Error('SVG export failed');
+
+                const blob = await response.blob();
+                downloadBlob(blob, 'plot.svg');
+                showStatus('success', '✅ SVG downloaded!');
+            } catch (error) {
+                showStatus('error', `❌ SVG export error: ${error.message}`);
+            }
+        }
+
+        async function downloadGIF() {
+            if (!currentPlotly) {
+                showStatus('error', '❌ Generate a plot first');
+                return;
+            }
+
+            showStatus('loading', '⏳ Generating animated GIF... (may take 10-20 seconds)');
+
+            try {
+                const response = await fetch('/api/export_gif', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentPlotly)
+                });
+
+                if (!response.ok) throw new Error('GIF export failed');
+
+                const blob = await response.blob();
+                downloadBlob(blob, 'plot.gif');
+                showStatus('success', '✅ GIF downloaded!');
+            } catch (error) {
+                showStatus('error', `❌ GIF export error: ${error.message}`);
+            }
+        }
+
+        async function downloadAllAsZip() {
+            if (dashboardPlots.length === 0) {
+                showStatus('error', '❌ Add plots to dashboard first');
+                return;
+            }
+
+            showStatus('loading', '⏳ Creating ZIP file...');
+
+            try {
+                const response = await fetch('/api/export_zip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        plots: dashboardPlots,
+                        data: parsedData
+                    })
+                });
+
+                if (!response.ok) throw new Error('ZIP export failed');
+
+                const blob = await response.blob();
+                downloadBlob(blob, 'dashboard.zip');
+                showStatus('success', '✅ ZIP downloaded!');
+            } catch (error) {
+                showStatus('error', `❌ ZIP export error: ${error.message}`);
+            }
+        }
+
+        function copyEmbedCode() {
+            if (!currentPlotly) {
+                showStatus('error', '❌ Generate a plot first');
+                return;
+            }
+
+            const code = `<div id="myPlot"></div>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"><\/script>
+<script>
+Plotly.newPlot('myPlot', ${JSON.stringify(currentPlotly.data)}, ${JSON.stringify(currentPlotly.layout)}, {responsive: true});
+<\/script>`;
+
+            navigator.clipboard.writeText(code).then(() => {
+                showStatus('success', '✅ Embed code copied!');
+            }).catch(() => {
+                showStatus('error', '❌ Failed to copy');
+            });
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            downloadBlob(blob, filename);
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 4000);
+            }
+        }
+    </script>
+</body>
+</html>
