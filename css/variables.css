@@ -1,0 +1,14 @@
+:root {
+    --bg: #f5f5f9;
+    --card: #ffffff;
+    --primary: #696cff;
+    --primary-light: #eef0ff;
+
+    --text-main: #384551;
+    --text-muted: #8592a3;
+
+    --radius: 12px;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+    --sidebar-width: 260px;
+}
